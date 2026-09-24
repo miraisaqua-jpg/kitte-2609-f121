@@ -1,5 +1,7 @@
 # 公開しないファイル（ローカルには残す）
 *.docx
 計画.md
+引き継ぎ/
+CLAUDE.md
 .claude/
 .DS_Store
