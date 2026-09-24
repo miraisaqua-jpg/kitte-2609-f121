@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>切手いくら？</title>
+<meta name="description" content="封筒とA4の枚数から郵便料金と切手の組み合わせを出す計算ツール">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="切手いくら">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23c4372a'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700'%3E〒%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23c4372a'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700'%3E〒%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff;
+  --surface:#f7f6f3;
+  --surface-2:#efede8;
+  --ink:#17181a;
+  --ink-2:#5c5f66;
+  --ink-3:#9a9da5;
+  --line:rgba(23,24,26,.08);
+  --accent:#c4372a;
+  --accent-ink:#ffffff;
+  --accent-soft:rgba(196,55,42,.08);
+  --ok:#2f7a4f;
+  --ok-soft:rgba(47,122,79,.10);
+  --warn:#b7791f;
+  --warn-soft:rgba(183,121,31,.12);
+  --shadow:0 1px 2px rgba(23,24,26,.04), 0 12px 40px -12px rgba(23,24,26,.12);
+  --ease:cubic-bezier(.32,.72,0,1);
+  --r-card:22px;
+  --r-inner:14px;
+  --font-jp:"Zen Kaku Gothic New","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+  --font-num:"Geist","Zen Kaku Gothic New",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--font-jp);
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 48px);
+}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+
+.wrap{max-width:560px;margin:0 auto;padding:0 16px}
+
+/* header */
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;padding:28px 0 18px}
+.hdr h1{min-width:0;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.hdr h1 small{display:block;font-size:12px;font-weight:500;color:var(--ink-3);letter-spacing:.02em;margin-top:6px}
+.hdr .tools{display:flex;gap:8px}
+.iconbtn{
+  width:40px;height:40px;border-radius:999px;background:var(--surface);
+  display:grid;place-items:center;color:var(--ink-2);
+  transition:transform .5s var(--ease),background .5s var(--ease);
+}
+.iconbtn:active{transform:scale(.94)}
+.iconbtn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* cards: double bezel */
+.shell{background:var(--surface);border-radius:var(--r-card);padding:6px;margin-bottom:14px}
+.core{background:var(--bg);border-radius:calc(var(--r-card) - 6px);padding:18px 16px;box-shadow:0 1px 0 rgba(255,255,255,.9) inset}
+.sec-title{font-size:12px;font-weight:700;color:var(--ink-3);letter-spacing:.06em;margin-bottom:12px}
+
+/* envelope picker */
+.envs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.env{
+  position:relative;min-width:0;border-radius:var(--r-inner);background:var(--surface);padding:10px 4px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:transform .55s var(--ease),background .55s var(--ease),box-shadow .55s var(--ease);
+  outline:2px solid transparent;outline-offset:-2px;
+}
+.env:active{transform:scale(.96)}
+.env svg{width:100%;max-width:100%;height:78px;display:block;overflow:visible}
+.env .nm{font-size:12px;font-weight:700;line-height:1.1;white-space:nowrap}
+.env .dm{font-size:9.5px;color:var(--ink-3);line-height:1.1;white-space:nowrap}
+.env .paper{fill:#fbfaf7;stroke:#b9b5aa;stroke-width:1.2}
+.env .flap{fill:#f0ede6;stroke:#b9b5aa;stroke-width:1.2}
+.env[aria-pressed="true"]{background:var(--bg);outline-color:var(--accent);box-shadow:var(--shadow)}
+.env[aria-pressed="true"] .paper{fill:#fff;stroke:var(--accent)}
+.env[aria-pressed="true"] .flap{fill:var(--accent-soft);stroke:var(--accent)}
+.env-hint{margin-top:12px;font-size:12px;color:var(--ink-2);display:flex;gap:8px;align-items:center}
+.env-hint b{color:var(--ink);font-weight:700}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
+.chip.accent{background:var(--accent-soft);color:var(--accent)}
+
+/* rows */
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0}
+.row + .row{border-top:1px solid var(--line)}
+.row.wrapping{flex-wrap:wrap}
+.row.wrapping .seg{margin-left:auto}
+.row .lab{font-size:15px;font-weight:500;flex:1 1 auto;min-width:0}
+.row .step,.row .seg,.row .toggle{flex:none}
+.row .lab small{display:block;font-size:11px;color:var(--ink-3);font-weight:400;margin-top:2px}
+.step{display:flex;align-items:center;background:var(--surface);border-radius:999px;padding:3px}
+.step button{
+  width:38px;height:38px;border-radius:999px;background:var(--bg);font-size:20px;line-height:1;color:var(--ink);
+  box-shadow:0 1px 2px rgba(23,24,26,.06);transition:transform .4s var(--ease),opacity .3s;
+}
+.step button:active{transform:scale(.9)}
+.step button:disabled{opacity:.3}
+.step input{
+  width:48px;text-align:center;background:none;border:0;font-size:18px;font-weight:600;
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;outline:none;
+}
+.step input:focus{color:var(--accent)}
+.seg{display:inline-flex;background:var(--surface);border-radius:999px;padding:3px;gap:2px}
+.seg button{
+  padding:8px 13px;border-radius:999px;font-size:13px;font-weight:600;color:var(--ink-2);
+  transition:background .5s var(--ease),color .5s var(--ease),transform .4s var(--ease);
+}
+.seg button:active{transform:scale(.95)}
+.seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:0 1px 3px rgba(23,24,26,.08)}
+.row.disabled{opacity:.45;pointer-events:none}
+
+details.more{border-top:1px solid var(--line);margin-top:4px}
+details.more summary{
+  list-style:none;display:flex;align-items:center;justify-content:space-between;
+  padding:14px 0 4px;font-size:13px;font-weight:700;color:var(--ink-2);cursor:pointer;
+}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary .chev{transition:transform .5s var(--ease)}
+details.more[open] summary .chev{transform:rotate(180deg)}
+.subhead{font-size:11px;font-weight:700;color:var(--ink-3);letter-spacing:.06em;padding:14px 0 4px}
+.toggle{position:relative;width:48px;height:28px;border-radius:999px;background:var(--surface-2);transition:background .5s var(--ease)}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:transform .5s var(--ease)}
+.toggle[aria-checked="true"]{background:var(--accent)}
+.toggle[aria-checked="true"]::after{transform:translateX(20px)}
+
+/* result */
+.result{position:relative}
+.result .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.result .meta .num{font-weight:600;color:var(--ink)}
+.price{display:flex;align-items:baseline;gap:6px;margin:10px 0 4px}
+.price .val{font-size:64px;font-weight:700;letter-spacing:-.04em;line-height:1}
+.price .unit{font-size:20px;font-weight:600;color:var(--ink-2)}
+.price.pop .val{animation:pop .7s var(--ease)}
+@keyframes pop{0%{opacity:0;transform:translateY(10px) scale(.98)}100%{opacity:1;transform:none}}
+.breakdown{font-size:12px;color:var(--ink-3);margin-bottom:8px}
+.alert{
+  display:flex;gap:10px;align-items:flex-start;border-radius:var(--r-inner);padding:12px 14px;
+  font-size:13px;line-height:1.55;margin-top:12px;
+}
+.alert.warn{background:var(--warn-soft);color:#7a5010}
+.alert.bad{background:var(--accent-soft);color:var(--accent)}
+.alert.ok{background:var(--ok-soft);color:var(--ok)}
+.alert b{font-weight:700}
+.alert svg{flex:none;width:18px;height:18px;margin-top:2px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+/* stamps */
+.combo{padding:12px 0}
+.combo + .combo{border-top:1px solid var(--line)}
+.combo .ttl{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--ink-3);margin-bottom:8px}
+.combo .ttl span:last-child{font-weight:500}
+.stamps{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.stamp{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  min-width:52px;height:40px;padding:0 8px;border-radius:6px;
+  background:#fff;color:var(--ink);font-family:var(--font-num);font-weight:700;font-size:15px;
+  box-shadow:0 0 0 1px rgba(23,24,26,.1), 0 2px 6px -2px rgba(23,24,26,.15);
+  background-image:radial-gradient(circle at 0 0, transparent 2.5px, #fff 2.5px);
+}
+.stamp::before{
+  content:"";position:absolute;inset:-4px;border-radius:8px;z-index:-1;
+  background:
+    radial-gradient(circle, var(--surface-2) 2px, transparent 2.2px) 0 0/8px 8px;
+  opacity:.9;
+}
+.stamp.old{color:var(--ink-2);background:#f6f4ee}
+.stamp .x{font-size:11px;font-weight:600;color:var(--ink-3);margin-left:4px}
+.plus{color:var(--ink-3);font-size:14px}
+.combo .note{font-size:12px;color:var(--ink-3);margin-top:6px}
+.empty{font-size:13px;color:var(--ink-3)}
+.linkbtn{font-size:13px;font-weight:700;color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.linkbtn .arr{width:22px;height:22px;border-radius:999px;background:var(--accent-soft);display:grid;place-items:center;font-size:12px}
+
+/* alternatives */
+.alt{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0}
+.alt + .alt{border-top:1px solid var(--line)}
+.alt .nm{font-size:14px;font-weight:600}
+.alt .nm small{display:block;font-size:11px;color:var(--ink-3);font-weight:400}
+.alt .pr{font-family:var(--font-num);font-weight:700;font-size:17px;display:flex;align-items:center;gap:8px;white-space:nowrap;flex:none}
+.alt.na{opacity:.4}
+
+/* table */
+.tbl-wrap{overflow:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 6px;text-align:right;white-space:nowrap}
+th{font-size:11px;color:var(--ink-3);font-weight:700;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg)}
+td{border-bottom:1px solid var(--line);font-family:var(--font-num);font-variant-numeric:tabular-nums}
+td:first-child,th:first-child{text-align:left;font-family:var(--font-jp)}
+td.warnc{color:var(--warn);font-weight:600}
+tr.tier td{border-top:2px solid var(--surface-2)}
+.tbl-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tbl-tabs button{padding:7px 12px;border-radius:999px;background:var(--surface);font-size:13px;font-weight:600;color:var(--ink-2)}
+.tbl-tabs button[aria-pressed="true"]{background:var(--ink);color:#fff}
+
+/* dialogs as bottom sheets */
+dialog{
+  border:0;padding:0;background:transparent;max-width:100vw;max-height:100dvh;width:100vw;margin:auto 0 0 0;
+}
+dialog::backdrop{background:rgba(23,24,26,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.sheet{
+  background:var(--bg);border-radius:26px 26px 0 0;padding:10px 16px calc(24px + env(safe-area-inset-bottom));
+  max-width:560px;margin:0 auto;max-height:88dvh;overflow:auto;
+  animation:up .6s var(--ease);
+}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--surface-2);margin:0 auto 14px}
+.sheet h2{font-size:18px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
+.sheet .desc{font-size:13px;color:var(--ink-2);margin-bottom:12px}
+.sheet .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.btn{padding:11px 18px;border-radius:999px;font-weight:700;font-size:14px;background:var(--surface);color:var(--ink);transition:transform .4s var(--ease)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--ink);color:#fff}
+.btn.ghost{color:var(--ink-2)}
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.setrow label{font-size:14px}
+.setrow label small{display:block;font-size:11px;color:var(--ink-3)}
+.setrow input[type=number]{
+  width:88px;text-align:right;padding:8px 10px;border-radius:10px;border:1px solid var(--line);
+  background:var(--surface);font-family:var(--font-num);font-size:15px;outline:none;
+}
+.setrow input[type=number]:focus{border-color:var(--accent);background:#fff}
+.invgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+.invgrid .setrow{padding:6px 0}
+
+footer{text-align:center;font-size:11px;color:var(--ink-3);padding:10px 0 0;line-height:1.7}
+
+/* entry motion */
+.rise{animation:rise .9s var(--ease) both}
+.rise:nth-child(2){animation-delay:.06s}.rise:nth-child(3){animation-delay:.12s}.rise:nth-child(4){animation-delay:.18s}.rise:nth-child(5){animation-delay:.24s}.rise:nth-child(6){animation-delay:.3s}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+@media print{
+  body{padding:0}
+  .hdr .tools,.shell:not(#tableShell),dialog,footer .no-print{display:none}
+  .shell{background:none;padding:0}
+  .core{box-shadow:none;padding:0}
+  .tbl-wrap{margin:0;padding:0}
+}
+@media (min-width:600px){
+  .hdr h1{font-size:30px}
+  .price .val{font-size:72px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hdr">
+  <h1>切手いくら？<small>封筒とA4の枚数から郵便料金と切手の貼り方を出します</small></h1>
+  <div class="tools">
+    <button class="iconbtn" id="btnInv" aria-label="切手の在庫" title="切手の在庫">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h4M7 13h10"/></svg>
+    </button>
+    <button class="iconbtn" id="btnSet" aria-label="設定" title="設定">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- envelope -->
+<section class="shell rise">
+  <div class="core">
+    <div class="sec-title">封筒を選ぶ</div>
+    <div class="envs" id="envs"></div>
+    <div class="env-hint" id="envHint"></div>
+  </div>
+</section>
+
+<!-- inputs -->
+<section class="shell rise">
+  <div class="core">
+    <div class="sec-title">中身</div>
+    <div class="row">
+      <div class="lab">A4の枚数<small id="paperHint">普通紙 1枚 4.2g</small></div>
+      <div class="step" data-step="sheets"><button data-d="-1" aria-label="減らす">−</button><input type="number" inputmode="numeric" min="0" max="300" value="1"><button data-d="1" aria-label="増やす">＋</button></div>
+    </div>
+    <div class="row" id="rowFiles">
+      <div class="lab">クリアファイル<small id="fileHint">A4 標準0.2mm 1枚 25g</small></div>
+      <div class="step" data-step="files"><button data-d="-1" aria-label="減らす">−</button><input type="number" inputmode="numeric" min="0" max="20" value="0"><button data-d="1" aria-label="増やす">＋</button></div>
+    </div>
+    <div class="row">
+      <div class="lab">返信用封筒<small>切手を貼った状態で同封</small></div>
+      <div class="seg" data-seg="reply">
+        <button data-v="none" aria-pressed="true">なし</button>
+        <button data-v="cho3" aria-pressed="false">長3</button>
+        <button data-v="cho4" aria-pressed="false">長4</button>
+      </div>
+    </div>
+
+    <details class="more" id="more">
+      <summary><span>詳細（ホッチキス・付箋・紙の厚さ・速達など）</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="subhead">重さの微調整</div>
+      <div class="row">
+        <div class="lab">ホッチキス<small>1回 0.03g。ほぼ誤差です</small></div>
+        <div class="step" data-step="staples"><button data-d="-1" aria-label="減らす">−</button><input type="number" inputmode="numeric" min="0" max="50" value="0"><button data-d="1" aria-label="増やす">＋</button></div>
+      </div>
+      <div class="row">
+        <div class="lab">付箋<small>1枚 0.1g。ほぼ誤差です</small></div>
+        <div class="step" data-step="stickies"><button data-d="-1" aria-label="減らす">−</button><input type="number" inputmode="numeric" min="0" max="50" value="0"><button data-d="1" aria-label="増やす">＋</button></div>
+      </div>
+      <div class="row">
+        <div class="lab">紙の厚さ</div>
+        <div class="seg" data-seg="paper">
+          <button data-v="thin" aria-pressed="false">薄口</button>
+          <button data-v="normal" aria-pressed="true">普通</button>
+          <button data-v="thick" aria-pressed="false">厚口</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="lab">安全マージン<small>重さを5%（最低2g）多めに見て判定</small></div>
+        <button class="toggle" role="switch" aria-checked="true" data-toggle="margin"></button>
+      </div>
+      <div class="subhead">オプション</div>
+      <div class="row">
+        <div class="lab">速達<small>250gまで+300円、1kgまで+400円</small></div>
+        <button class="toggle" role="switch" aria-checked="false" data-toggle="express"></button>
+      </div>
+      <div class="row wrapping">
+        <div class="lab">記録・書留</div>
+        <div class="seg" data-seg="record">
+          <button data-v="none" aria-pressed="true">なし</button>
+          <button data-v="tokutei" aria-pressed="false">特定記録</button>
+          <button data-v="kani" aria-pressed="false">簡易書留</button>
+          <button data-v="ippan" aria-pressed="false">一般書留</button>
+        </div>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- result -->
+<section class="shell rise">
+  <div class="core result" id="result"></div>
+</section>
+
+<!-- stamps -->
+<section class="shell rise">
+  <div class="core">
+    <div class="sec-title">切手の貼り方</div>
+    <div id="stampsOut"></div>
+  </div>
+</section>
+
+<!-- alternatives -->
+<section class="shell rise">
+  <div class="core">
+    <div class="sec-title">他の送り方と比べる</div>
+    <div id="altOut"></div>
+  </div>
+</section>
+
+<!-- table -->
+<section class="shell rise" id="tableShell">
+  <div class="core">
+    <details class="more" id="tableDetails" style="border-top:0;margin-top:0">
+      <summary style="padding-top:0"><span class="sec-title" style="margin:0">早見表（枚数ごとの料金）</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div style="padding-top:12px">
+        <div class="tbl-tabs" id="tblTabs"></div>
+        <div class="tbl-wrap" id="tblOut"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--ink-3)">
+          <span>⚠ は区分の境界から5g以内。はかりで確認を。</span>
+          <button class="btn ghost no-print" onclick="window.print()" style="padding:8px 12px;font-size:13px">印刷</button>
+        </div>
+      </div>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div>料金表: <span id="revLabel"></span> 改定版（日本郵便）・重さは目安です。境界に近いときは実測してください。</div>
+</footer>
+</div>
+
+<!-- inventory sheet -->
+<dialog id="dlgInv">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>手持ちの切手</h2>
+    <p class="desc">持っている切手の枚数を入れると、それだけで貼れる組み合わせを出します。旧額面も使えます。</p>
+    <div class="subhead">現行の額面</div>
+    <div class="invgrid" id="invCur"></div>
+    <div class="subhead">旧額面（在庫があれば）</div>
+    <div class="invgrid" id="invOld"></div>
+    <div class="actions">
+      <button class="btn ghost" id="invClear">すべて0にする</button>
+      <button class="btn primary" id="invClose">閉じる</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- settings sheet -->
+<dialog id="dlgSet">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>重さの設定</h2>
+    <p class="desc">実際にはかりで量った値を入れると精度が上がります。空欄なら既定値を使います。</p>
+    <div id="setRows"></div>
+    <div class="actions">
+      <button class="btn ghost" id="setReset">既定値に戻す</button>
+      <button class="btn primary" id="setClose">保存して閉じる</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* ================= 料金マスタ（日本郵便 2024/10/1 改定・2026-09-24 確認） ================= */
+const RATES = {
+  revision: '2024年10月1日',
+  teikei:    { maxG: 50,  maxMm: 10, price: 110 },
+  kikakunai: { maxMm: 30, tiers: [[50,140],[100,180],[150,270],[250,320],[500,510],[1000,750]] },
+  kikakugai: { tiers: [[50,260],[100,290],[150,390],[250,450],[500,660],[1000,920],[2000,1350],[4000,1750]] },
+  letterpackLight: 430, letterpackPlus: 600, smartLetter: 210,
+  express: [[250,300],[1000,400],[4000,690]],
+  record: { tokutei: ['特定記録',210], kani: ['簡易書留',350], ippan: ['一般書留',480] },
+};
+const STAMPS_CUR = [1000,750,510,320,270,180,140,110,85,50,20,10,5,2,1];
+const STAMPS_OLD = [250,210,120,100,94,84,63];
+
+/* ================= 重量マスタ（既定値・設定で上書き可） ================= */
+const DEFAULTS = {
+  paper_thin: 3.9, paper_normal: 4.2, paper_thick: 4.6,   // g/枚
+  env_cho3: 6, env_cho4: 4, env_yocho3: 6, env_kaku2: 15, env_kaku3: 12, // g
+  clearfile: 25,  // g/枚
+  staple: 0.03, sticky: 0.1,
+};
+const PAPER_MM = { thin: .08, normal: .09, thick: .1 };
+const CLEARFILE_MM = .5, ENV_MM = .3;
+
+/* 封筒: サイズmm・定形か規格内か・A4の折り数・クリアファイルが入るか */
+const ENVELOPES = [
+  { id:'cho3',   name:'長形3号',  short:'長3',   w:120, h:235, cls:'teikei',    fold:3, foldLabel:'A4を三つ折りで入れる', clearFile:false },
+  { id:'cho4',   name:'長形4号',  short:'長4',   w:90,  h:205, cls:'teikei',    fold:4, foldLabel:'B5向け。A4は四つ折りが必要', clearFile:false },
+  { id:'yocho3', name:'洋形長3号', short:'洋長3', w:235, h:120, cls:'teikei',    fold:3, foldLabel:'A4を三つ折りで入れる（横型）', clearFile:false },
+  { id:'kaku2',  name:'角形2号',  short:'角2',   w:240, h:332, cls:'kikakunai', fold:1, foldLabel:'A4を折らずに入れる。クリアファイル可', clearFile:true },
+  { id:'kaku3',  name:'角形3号',  short:'角3',   w:216, h:277, cls:'kikakunai', fold:2, foldLabel:'B5向け。A4は二つ折りが必要', clearFile:false },
+];
+
+/* ================= 状態 ================= */
+const LS = { set:'kitte.settings.v1', inv:'kitte.inventory.v1', ui:'kitte.ui.v1' };
+const load = (k, d) => { try { return Object.assign({}, d, JSON.parse(localStorage.getItem(k) || '{}')); } catch { return {...d}; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+let settings = load(LS.set, {});
+let inventory = load(LS.inv, {});
+const state = Object.assign({ env:'cho3', sheets:1, files:0, reply:'none', staples:0, stickies:0, paper:'normal', margin:true, express:false, record:'none', tblEnv:null }, load(LS.ui, {}));
+
+const W = key => { const v = Number(settings[key]); return Number.isFinite(v) && v > 0 ? v : DEFAULTS[key]; };
+const env = () => ENVELOPES.find(e => e.id === state.env);
+const yen = n => n.toLocaleString('ja-JP');
+const g1 = n => (Math.round(n*10)/10).toLocaleString('ja-JP', { maximumFractionDigits:1 });
+
+/* ================= 計算エンジン ================= */
+function tierOf(tiers, g) { for (const [max, price] of tiers) if (g <= max) return { max, price }; return null; }
+
+function compute(s = state) {
+  const e = ENVELOPES.find(x => x.id === s.env);
+  const files = e.clearFile ? s.files : 0;
+  const paperG = W('paper_' + s.paper);
+  const replyG = s.reply === 'none' ? 0 : W('env_' + s.reply);
+  const raw = W('env_' + e.id) + s.sheets * paperG + files * W('clearfile') + replyG + s.staples * W('staple') + s.stickies * W('sticky');
+  const judged = s.margin ? Math.max(raw * 1.05, raw + 2) : raw;
+  const mm = ENV_MM + s.sheets * PAPER_MM[s.paper] * e.fold + files * CLEARFILE_MM + (replyG ? ENV_MM : 0);
+  if (raw > 4000) return { e, raw, judged, mm, over: true };
+
+  // 実測どおりの区分（生の重さで判定）
+  const exact = classify(e, raw, mm);
+  // 区分の境界（±5g）を探す
+  const thresholds = (e.cls === 'teikei' ? [50] : []).concat(RATES.kikakunai.tiers.map(t => t[0]), RATES.kikakugai.tiers.map(t => t[0]));
+  let boundary = null;
+  for (const t of thresholds) {
+    if (Math.abs(raw - t) <= 5) {
+      const lo = classify(e, Math.min(raw, t), mm), hi = classify(e, t + .01, mm);
+      if (hi && lo.price !== hi.price) { boundary = { at: t, lo: lo.price, hi: hi.price, above: raw > t }; break; }
+    }
+  }
+  // 安全マージン: 生の重さは境界の下だが、マージンを乗せると超える → 1区分だけ上げて提示
+  let used = exact, safeUp = false;
+  if (s.margin && boundary && !boundary.above && judged > boundary.at) {
+    const up = classify(e, boundary.at + .01, mm); if (up) { used = up; safeUp = true; }
+  }
+  const reasons = [];
+  if (e.cls === 'teikei' && used.cat !== '定形郵便') {
+    if (used.weightG > RATES.teikei.maxG) reasons.push('50gを超えるため定形外');
+    else if (mm > RATES.teikei.maxMm) reasons.push('厚さ1cmを超えるため定形外');
+  }
+  if (used.cat === '定形外・規格外') reasons.push(mm > 30 ? '厚さ3cm超のため規格外' : '1kg超のため規格外');
+
+  const expressFee = s.express ? (tierOf(RATES.express, used.weightG) || { price: 690 }).price : 0;
+  const record = s.record !== 'none' ? RATES.record[s.record] : null;
+  const total = used.price + expressFee + (record ? record[1] : 0);
+  return { e, raw, judged, mm, cat: used.cat, base: used.price, tier: used.tier, reasons, boundary, safeUp, expressFee, record, total, filesIgnored: s.files > 0 && !e.clearFile };
+}
+/* 重さと厚さから区分と料金を返す */
+function classify(e, g, mm) {
+  if (e.cls === 'teikei' && g <= RATES.teikei.maxG && mm <= RATES.teikei.maxMm) return { cat: '定形郵便', price: RATES.teikei.price, tier: { max: 50, price: 110 }, weightG: g };
+  if (g <= 1000 && mm <= RATES.kikakunai.maxMm) { const t = tierOf(RATES.kikakunai.tiers, g); return { cat: '定形外・規格内', price: t.price, tier: t, weightG: g }; }
+  const t = tierOf(RATES.kikakugai.tiers, g); if (!t) return null;
+  return { cat: '定形外・規格外', price: t.price, tier: t, weightG: g };
+}
+
+/* ================= 切手の組み合わせ ================= */
+function minStamps(amount, denoms) {
+  const dp = new Array(amount + 1).fill(Infinity), pick = new Array(amount + 1).fill(0); dp[0] = 0;
+  for (let a = 1; a <= amount; a++) for (const d of denoms) if (d <= a && dp[a-d] + 1 < dp[a]) { dp[a] = dp[a-d] + 1; pick[a] = d; }
+  if (!isFinite(dp[amount])) return null;
+  const out = []; for (let a = amount; a > 0; a -= pick[a]) out.push(pick[a]);
+  return out.sort((x, y) => y - x);
+}
+function base110(amount) {
+  const out = []; let rem = amount;
+  const n110 = Math.floor(rem / 110); for (let i = 0; i < n110; i++) out.push(110); rem -= n110 * 110;
+  for (const d of [50,20,10,5,2,1]) while (rem >= d) { out.push(d); rem -= d; }
+  return out;
+}
+/* 在庫制約つき: 不足なし → 過払い最少 → 枚数最少 */
+function fromInventory(amount, inv) {
+  const items = Object.entries(inv).map(([d, c]) => [Number(d), Number(c)]).filter(([d, c]) => d > 0 && c > 0);
+  if (!items.length) return { none: true };
+  const LIMIT = amount + 1000;
+  let dp = new Array(LIMIT + 1).fill(Infinity); dp[0] = 0;
+  let from = new Array(LIMIT + 1).fill(null);
+  for (const [d, c] of items) {
+    const next = dp.slice(), nf = from.slice();
+    for (let a = 0; a <= LIMIT; a++) {
+      if (!isFinite(dp[a])) continue;
+      for (let k = 1; k <= c && a + k*d <= LIMIT; k++) {
+        if (dp[a] + k < next[a + k*d]) { next[a + k*d] = dp[a] + k; nf[a + k*d] = [a, d, k]; }
+      }
+    }
+    dp = next; from = nf;
+  }
+  for (let a = amount; a <= LIMIT; a++) if (isFinite(dp[a])) {
+    const out = []; let cur = a;
+    while (cur > 0) { const [prev, d, k] = from[cur]; for (let i = 0; i < k; i++) out.push(d); cur = prev; }
+    return { stamps: out.sort((x, y) => y - x), over: a - amount };
+  }
+  return { short: true };
+}
+
+/* ================= 描画 ================= */
+const $ = s => document.querySelector(s);
+const svgIcon = {
+  warn: '<svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+};
+
+function envSvg(e) {
+  const S = .27, pad = 4, W = 100, H = 78;
+  const w = e.w * S, h = e.h * S, x = (W - w) / 2, y = (H - h) / 2 + 2;
+  const flapH = Math.min(h * .28, 16);
+  return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <rect class="paper" x="${x}" y="${y}" width="${w}" height="${h}" rx="2"/>
+    <path class="flap" d="M${x} ${y} L${x + w/2} ${y + flapH} L${x + w} ${y} Z"/>
+  </svg>`;
+}
+function renderEnvs() {
+  $('#envs').innerHTML = ENVELOPES.map(e => `
+    <button class="env" data-env="${e.id}" aria-pressed="${e.id === state.env}">
+      ${envSvg(e)}
+      <span class="nm">${e.short}</span>
+      <span class="dm num">${e.w}×${e.h}</span>
+    </button>`).join('');
+  const e = env();
+  $('#envHint').innerHTML = `<span class="chip ${e.cls === 'teikei' ? 'accent' : ''}">${e.cls === 'teikei' ? '定形サイズ' : '定形外サイズ'}</span><span><b>${e.name}</b> ${e.foldLabel}。封筒 <span class="num">${g1(W('env_' + e.id))}g</span></span>`;
+  $('#rowFiles').classList.toggle('disabled', !e.clearFile);
+  $('#fileHint').textContent = e.clearFile ? `A4 標準0.2mm 1枚 ${g1(W('clearfile'))}g` : 'この封筒には入りません（角2を選択）';
+}
+
+let lastTotal = null;
+function renderResult() {
+  const r = compute();
+  const box = $('#result');
+  if (r.over) {
+    box.innerHTML = `<div class="sec-title">料金</div><div class="alert bad">${svgIcon.warn}<div><b>4kgを超えています。</b>郵便物としては送れません。ゆうパックなどをご検討ください。</div></div>`;
+    $('#stampsOut').innerHTML = '<p class="empty">計算できません</p>'; renderAlts(r); return;
+  }
+  const popCls = r.total !== lastTotal ? 'pop' : ''; lastTotal = r.total;
+  const brk = [];
+  brk.push(`基本 ${yen(r.base)}円`);
+  if (r.expressFee) brk.push(`速達 +${yen(r.expressFee)}円`);
+  if (r.record) brk.push(`${r.record[0]} +${yen(r.record[1])}円`);
+  box.innerHTML = `
+    <div class="sec-title">料金</div>
+    <div class="meta">
+      <span>推定 <span class="num">${g1(r.raw)}g</span></span>
+      <span>・</span><span>厚さ約 <span class="num">${g1(r.mm)}mm</span></span>
+      <span>・</span><span class="num" style="color:var(--ink)">${r.cat}${r.tier && r.cat !== '定形郵便' ? `（${r.tier.max >= 1000 ? r.tier.max/1000 + 'kg' : r.tier.max + 'g'}以内）` : ''}</span>
+    </div>
+    <div class="price ${popCls}"><span class="val num">${yen(r.total)}</span><span class="unit">円</span></div>
+    ${brk.length > 1 ? `<div class="breakdown">${brk.join(' ＋ ')}</div>` : ''}
+    ${r.reasons.map(t => `<div class="alert ok">${svgIcon.info}<div>${t}になります。</div></div>`).join('')}
+    ${r.boundary ? `<div class="alert warn">${svgIcon.warn}<div><b>${r.boundary.at}gの境界に近いです（推定 ${g1(r.raw)}g）。</b>はかりで実測を。${r.boundary.at}g以内なら <b class="num">${yen(r.boundary.lo)}円</b>、超えると <b class="num">${yen(r.boundary.hi)}円</b>。${r.safeUp ? '安全側の料金を表示しています。' : ''}</div></div>` : ''}
+    ${r.filesIgnored ? `<div class="alert warn">${svgIcon.warn}<div>A4クリアファイルはこの封筒に入らないため、計算から外しています。角2に切り替えてください。</div></div>` : ''}
+  `;
+  renderStamps(r.total);
+  renderAlts(r);
+}
+function stampsHtml(list, old = new Set()) {
+  const counts = new Map(); for (const d of list) counts.set(d, (counts.get(d) || 0) + 1);
+  return `<div class="stamps">${[...counts.entries()].map(([d, c], i) =>
+    `${i ? '<span class="plus">+</span>' : ''}<span class="stamp ${old.has(d) ? 'old' : ''}">${d}${c > 1 ? `<span class="x">×${c}</span>` : ''}</span>`).join('')}</div>`;
+}
+function renderStamps(total) {
+  const oldSet = new Set(STAMPS_OLD);
+  const a = minStamps(total, STAMPS_CUR);
+  const b = base110(total);
+  const inv = fromInventory(total, inventory);
+  let invHtml;
+  if (inv.none) invHtml = `<p class="empty">在庫を登録すると、手持ちだけで貼れる組み合わせを出します。</p><a class="linkbtn" href="#" id="lnkInv">在庫を登録する <span class="arr">→</span></a>`;
+  else if (inv.short) invHtml = `<p class="empty">在庫だけでは ${yen(total)}円 に届きません。</p>`;
+  else invHtml = stampsHtml(inv.stamps, oldSet) + (inv.over ? `<div class="note">${yen(inv.over)}円 多く貼ることになります（ぴったりの組み合わせが在庫にありません）。</div>` : '');
+  $('#stampsOut').innerHTML = `
+    <div class="combo"><div class="ttl"><span>最少枚数</span><span class="num">${a.length}枚</span></div>${stampsHtml(a)}</div>
+    <div class="combo"><div class="ttl"><span>110円切手ベース</span><span class="num">${b.length}枚</span></div>${stampsHtml(b)}${JSON.stringify(a) === JSON.stringify(b) ? '' : '<div class="note">110円切手を常備している場合の貼り方。</div>'}</div>
+    <div class="combo"><div class="ttl"><span>手持ちの在庫から</span>${inv.stamps ? `<span class="num">${inv.stamps.length}枚</span>` : ''}</div>${invHtml}</div>`;
+  const lnk = $('#lnkInv'); if (lnk) lnk.onclick = ev => { ev.preventDefault(); openInv(); };
+}
+function renderAlts(r) {
+  const rows = [];
+  const cmp = r.total;
+  const tracked = r.record || false;
+  const push = (nm, sub, price, ok, tag) => rows.push({ nm, sub, price, ok, tag });
+  if (!r.over) {
+    push('レターパックライト', 'A4・厚さ3cm・4kgまで。追跡つき。郵便受けへ', RATES.letterpackLight, r.mm <= 30 && r.judged <= 4000);
+    push('レターパックプラス', 'A4・4kgまで。厚さ制限なし。対面で受渡', RATES.letterpackPlus, r.judged <= 4000);
+    push('スマートレター', 'A5・厚さ2cm・1kgまで。A4は二つ折り。追跡なし', RATES.smartLetter, r.judged <= 1000 && (state.files === 0 || !r.e.clearFile) && (r.mm - (r.e.fold > 1 ? 0 : state.sheets * PAPER_MM[state.paper]) ) <= 20);
+  }
+  $('#altOut').innerHTML = rows.map(x => {
+    const cheaper = x.ok && x.price < cmp;
+    const tag = !x.ok ? '<span class="chip">条件外</span>' : cheaper ? '<span class="chip accent">安い</span>' : (x.price === cmp ? '<span class="chip">同額</span>' : '');
+    return `<div class="alt ${x.ok ? '' : 'na'}"><div class="nm">${x.nm}<small>${x.sub}</small></div><div class="pr">${tag}<span class="num">${yen(x.price)}円</span></div></div>`;
+  }).join('') + `<div class="note" style="font-size:12px;color:var(--ink-3);margin-top:10px">レターパックは専用封筒代込み。追跡が必要なら特定記録（+210円）と比べてください。</div>`;
+}
+
+/* 早見表 */
+function renderTableTabs() {
+  if (!state.tblEnv) state.tblEnv = state.env;
+  $('#tblTabs').innerHTML = ENVELOPES.map(e => `<button data-tbl="${e.id}" aria-pressed="${e.id === state.tblEnv}">${e.short}</button>`).join('');
+  renderTable();
+}
+function renderTable() {
+  const e = ENVELOPES.find(x => x.id === state.tblEnv);
+  const maxN = e.cls === 'teikei' ? 20 : 60;
+  const cols = [{ h: '書類のみ', s: {} }, { h: '+返信用(長3)', s: { reply: 'cho3' } }];
+  if (e.clearFile) cols.push({ h: '+ファイル1', s: { files: 1 } }, { h: '+ファイル1+返信', s: { files: 1, reply: 'cho3' } });
+  let prev = null, html = `<table><thead><tr><th>A4</th>${cols.map(c => `<th>${c.h}</th>`).join('')}</tr></thead><tbody>`;
+  for (let n = 1; n <= maxN; n++) {
+    const cells = cols.map(c => compute(Object.assign({}, state, { env: e.id, sheets: n, files: 0, reply: 'none', staples: 0, stickies: 0, express: false, record: 'none' }, c.s)));
+    const key = cells.map(r => r.total).join('/');
+    const tierChanged = prev !== null && key !== prev; prev = key;
+    html += `<tr class="${tierChanged ? 'tier' : ''}"><td>${n}枚 <span style="color:var(--ink-3);font-size:11px">${g1(cells[0].raw)}g</span></td>${cells.map(r => r.over ? '<td>-</td>' : `<td class="${r.boundary ? 'warnc' : ''}">${yen(r.total)}${r.boundary ? ' ⚠' : ''}</td>`).join('')}</tr>`;
+  }
+  $('#tblOut').innerHTML = html + '</tbody></table>';
+}
+
+/* 在庫・設定シート */
+function invRow(d, old) {
+  const v = inventory[d] || 0;
+  return `<div class="setrow"><label><span class="num">${d}円</span>${old ? '<small>旧額面</small>' : ''}</label>
+    <div class="step" data-inv="${d}"><button data-d="-1">−</button><input type="number" inputmode="numeric" min="0" max="99" value="${v}"><button data-d="1">＋</button></div></div>`;
+}
+function renderInv() {
+  $('#invCur').innerHTML = STAMPS_CUR.map(d => invRow(d, false)).join('');
+  $('#invOld').innerHTML = STAMPS_OLD.map(d => invRow(d, true)).join('');
+}
+function openInv() { renderInv(); $('#dlgInv').showModal(); }
+const SET_LABELS = [
+  ['paper_normal', 'A4 普通紙 1枚', 'g'], ['paper_thin', 'A4 薄口 1枚', 'g'], ['paper_thick', 'A4 厚口 1枚', 'g'],
+  ['env_cho3', '長3 封筒', 'g'], ['env_cho4', '長4 封筒', 'g'], ['env_yocho3', '洋長3 封筒', 'g'], ['env_kaku2', '角2 封筒', 'g'], ['env_kaku3', '角3 封筒', 'g'],
+  ['clearfile', 'クリアファイル 1枚', 'g'],
+];
+function renderSet() {
+  $('#setRows').innerHTML = SET_LABELS.map(([k, l, u]) => `<div class="setrow"><label>${l}<small>既定 ${DEFAULTS[k]}${u}</small></label><input type="number" step="0.1" min="0" data-set="${k}" value="${settings[k] ?? ''}" placeholder="${DEFAULTS[k]}"></div>`).join('');
+}
+
+/* ================= イベント ================= */
+function persist() { save(LS.ui, state); }
+function rerender() { renderEnvs(); renderResult(); renderTable(); persist(); }
+
+document.addEventListener('click', ev => {
+  const envBtn = ev.target.closest('[data-env]');
+  if (envBtn) { state.env = envBtn.dataset.env; state.tblEnv = state.env; renderTableTabs(); rerender(); return; }
+  const stepBtn = ev.target.closest('.step button');
+  if (stepBtn) {
+    const wrap = stepBtn.parentElement, inp = wrap.querySelector('input');
+    const v = Math.min(Number(inp.max), Math.max(Number(inp.min), (Number(inp.value) || 0) + Number(stepBtn.dataset.d)));
+    inp.value = v;
+    if (wrap.dataset.step) { state[wrap.dataset.step] = v; rerender(); }
+    else if (wrap.dataset.inv) { inventory[wrap.dataset.inv] = v; save(LS.inv, inventory); renderResult(); }
+    return;
+  }
+  const segBtn = ev.target.closest('.seg button');
+  if (segBtn) {
+    const seg = segBtn.parentElement; state[seg.dataset.seg] = segBtn.dataset.v;
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === segBtn));
+    if (seg.dataset.seg === 'paper') $('#paperHint').textContent = `${segBtn.textContent}紙 1枚 ${g1(W('paper_' + state.paper))}g`;
+    rerender(); return;
+  }
+  const tog = ev.target.closest('.toggle');
+  if (tog) { const on = tog.getAttribute('aria-checked') !== 'true'; tog.setAttribute('aria-checked', on); state[tog.dataset.toggle] = on; rerender(); return; }
+  const tbl = ev.target.closest('[data-tbl]');
+  if (tbl) { state.tblEnv = tbl.dataset.tbl; renderTableTabs(); persist(); return; }
+});
+document.addEventListener('input', ev => {
+  const inp = ev.target;
+  if (inp.matches('.step input')) {
+    const wrap = inp.parentElement; const v = Math.min(Number(inp.max), Math.max(0, Math.floor(Number(inp.value) || 0)));
+    if (wrap.dataset.step) { state[wrap.dataset.step] = v; rerender(); }
+    else if (wrap.dataset.inv) { inventory[wrap.dataset.inv] = v; save(LS.inv, inventory); renderResult(); }
+  }
+  if (inp.matches('[data-set]')) { const v = inp.value.trim(); if (v === '') delete settings[inp.dataset.set]; else settings[inp.dataset.set] = Number(v); }
+});
+$('#btnInv').onclick = openInv;
+$('#invClose').onclick = () => $('#dlgInv').close();
+$('#invClear').onclick = () => { inventory = {}; save(LS.inv, inventory); renderInv(); renderResult(); };
+$('#btnSet').onclick = () => { renderSet(); $('#dlgSet').showModal(); };
+$('#setClose').onclick = () => { save(LS.set, settings); $('#dlgSet').close(); $('#paperHint').textContent = `${{thin:'薄口',normal:'普通',thick:'厚口'}[state.paper]}紙 1枚 ${g1(W('paper_' + state.paper))}g`; rerender(); };
+$('#setReset').onclick = () => { settings = {}; save(LS.set, settings); renderSet(); };
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', ev => { if (ev.target === d) d.close(); }));
+
+/* 初期化: 保存済み状態をUIへ反映 */
+(function init() {
+  $('#revLabel').textContent = RATES.revision;
+  for (const k of ['sheets','files','staples','stickies']) { const el = document.querySelector(`[data-step="${k}"] input`); if (el) el.value = state[k]; }
+  for (const k of ['reply','paper','record']) document.querySelectorAll(`[data-seg="${k}"] button`).forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state[k]));
+  for (const k of ['margin','express']) { const t = document.querySelector(`[data-toggle="${k}"]`); if (t) t.setAttribute('aria-checked', !!state[k]); }
+  $('#paperHint').textContent = `${{thin:'薄口',normal:'普通',thick:'厚口'}[state.paper]}紙 1枚 ${g1(W('paper_' + state.paper))}g`;
+  if (state.staples || state.stickies || state.express || state.record !== 'none' || state.paper !== 'normal') $('#more').open = true;
+  renderTableTabs();
+  rerender();
+})();
+</script>
+</body>
+</html>
